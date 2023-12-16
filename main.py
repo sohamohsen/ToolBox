@@ -16,7 +16,6 @@ class App(ctk.CTk):
         self.title('ToolBox')
         self.minsize(800, 500)
         
-
         # sliders
         self.init_parameters()
 
@@ -66,8 +65,16 @@ class App(ctk.CTk):
             'effect': ctk.StringVar(value=EFFECT_OPTIONS[0]),
             'Find_Edges': ctk.StringVar(value=FIND_EDGES_OPTIONS[0])
         }
+        self.point_var = {
+            'gamma_corraction': ctk.DoubleVar(value=GAMMA_DEFAULT),
+            'bit_plane_slicing': ctk.IntVar(value=PLATE_NUM_DEFAULT),
+            'bit_plane_slicing_sw': ctk.BooleanVar(value=THRESHOLDING_SW_DEFAULT),
+            'log_value': ctk.IntVar(value=LOG_VALUE_DEFAULT),
+            'lower_threshold': ctk.IntVar(value=LOWER_THRESHOLD_DEFAULT),
+            'higher_threshold': ctk.IntVar(value=HIGHER_THRESHOLD_DEFAULT)
+        }
         # tracing
-        combined_vars = list(self.pos_var.values()) + list(self.color_var.values()) + list(self.effect_var.values())
+        combined_vars = list(self.pos_var.values()) + list(self.color_var.values()) + list(self.effect_var.values()) + list(self.point_var.values())
         for var in combined_vars:
             var.trace('w', self.manipulate_image)
 
@@ -214,6 +221,36 @@ class App(ctk.CTk):
                 threshold_value = self.effect_var['Thresholding'].get()  # Get the threshold value from the slider
                 ret, self.image = cv2.threshold(self.image, threshold_value, 255, cv2.THRESH_BINARY)
 
+        # Power Transformation
+        gamma = self.point_var['gamma_corraction'].get()
+        inv_gamma = 1.0 / gamma
+        table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+        # Apply gamma transformation
+        self.image = cv2.LUT(self.image, table)
+
+        # Log Tran
+        # Apply the logarithmic transformation
+        if self.point_var['log_value'].get():
+            c = 255 / np.log(1 + np.max(self.image))
+            log_transformed = c * np.log(1 + self.image)
+            # Convert floating-point pixels to unsigned 8-bit integer
+            self.image = np.uint8(log_transformed)
+
+        if self.point_var['bit_plane_slicing_sw'].get():
+            plane = self.point_var['bit_plane_slicing'].get()
+            transformed_image = (self.image >> plane) & 1
+            transformed_image *= 255  # Scale the image values to 0-255 for display
+            self.image = np.uint8(transformed_image)
+
+        if self.color_var['grayscale'].get():
+            lower_threshold = self.point_var['lower_threshold'].get()
+            upper_threshold = self.point_var['higher_threshold'].get()
+            mask = cv2.inRange(self.image, lower_threshold, upper_threshold)
+            self.image = cv2.bitwise_and(self.image, self.image, mask=mask) 
+        else: 
+            pass           
+        
+        
         # # Check if the "Show Hist" button is pressed
         # if self.color_var['hist'].get():
             
@@ -250,7 +287,7 @@ class App(ctk.CTk):
         # Display the image and close button
         self.image_output = ImageOutput(self, self.resize_image)
         self.close_button = CloseOutput(self, self.close_edit)
-        self.menu = Menu(self, self.pos_var, self.color_var, self.effect_var)
+        self.menu = Menu(self, self.pos_var, self.color_var, self.effect_var, self.point_var)
 
         self.image_output.grid(row=0, column=1, sticky='nsew')
         self.close_button.place(x=0, y=0)  # Adjust the position of the close button

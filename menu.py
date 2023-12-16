@@ -5,7 +5,7 @@ import cv2
 # from main import *
 
 class Menu(ctk.CTkTabview):
-    def __init__(self, parent, pos_var, color_var, effect_var):
+    def __init__(self, parent, pos_var, color_var, effect_var, point_var):
         super().__init__(master = parent)
         self.grid(row = 0, column = 0, sticky = 'nsew', pady = 10, padx = 10)
 
@@ -13,12 +13,13 @@ class Menu(ctk.CTkTabview):
         self.add('Position')
         self.add('Color')
         self.add('Effects')
-        self.add('Export')
+        self.add('P.P')
 
         # Widgets
         PositionFrame(self.tab('Position'), pos_var)
         ColorFrame(self.tab('Color'), color_var)
         EffactFrame(self.tab('Effects'), effect_var)
+        PointOfProcessingFrame(self.tab('P.P'), point_var)
 
 
 class PositionFrame(ctk.CTkFrame):
@@ -62,6 +63,15 @@ class EffactFrame(ctk.CTkFrame):
         # SliderPanel(self, 'Thresholding', effect_var['Thresholding'], 0, 255)
         SwSliderPanel(self, 'Thresholding', effect_var['Thresholding'], 0, 255, (effect_var['Thresholding_sw'], 'on/off'))
 
+class PointOfProcessingFrame(ctk.CTkFrame):
+    def __init__(self, parent, point_var):
+        super().__init__(master = parent, fg_color = 'transparent')
+        self.pack(expand = True, fill = 'both')
+
+        SliderPanel(self, 'Power transformation', point_var['gamma_corraction'], 0, 3)
+        SwitchPanel(self, (point_var['log_value'], 'Logarithmic transformation'))
+        SwSliderPanel(self, 'Bit plane slicing', point_var['bit_plane_slicing'], 0, 7, (point_var['bit_plane_slicing_sw'], 'on/off'))
+        Sliders2Panel(self, 'Gray level slice', 'Lower threshold','Upper threshold', point_var['lower_threshold'], point_var['higher_threshold'], 0, 255, 0, 255)
 
 
 

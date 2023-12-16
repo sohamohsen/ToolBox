@@ -184,29 +184,33 @@ class Sliders2Panel(Panel):
 
         ctk.CTkLabel(self, text=text2).grid(column=0, row=1, sticky='W', padx=5)
         
-        self.num_label = ctk.CTkLabel(self, text=rotation1.get())
-        self.num_label.grid(column=1, row=1, sticky='E', padx=5)
+        self.num_label1 = ctk.CTkLabel(self, text=rotation1.get())
+        self.num_label1.grid(column=1, row=1, sticky='E', padx=5)
         ctk.CTkSlider(self,
                       fg_color=SLIDER_BG,
                       variable=rotation1,
                       from_=min_value1,
                       to=max_value1,
-                      command=self.update_text).grid(row=2, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+                      command=self.update_text1).grid(row=2, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
         
         ctk.CTkLabel(self, text=text3).grid(column=0, row=3, sticky='W', padx=5)
-        self.num_label = ctk.CTkLabel(self, text=rotation2.get())
-        self.num_label.grid(column=1, row=3, sticky='E', padx=5)
+        self.num_label2 = ctk.CTkLabel(self, text=rotation2.get())
+        self.num_label2.grid(column=1, row=3, sticky='E', padx=5)
 
         ctk.CTkSlider(self,
                       fg_color=SLIDER_BG,
                       variable=rotation2,
                       from_=min_value2,
                       to=max_value2,
-                      command=self.update_text).grid(row=4, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+                      command=self.update_text2).grid(row=4, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
 
-    def update_text(self, value):
+    def update_text1(self, value):
         # print(value)
-        self.num_label.configure(text = f'{round(value, 2)}')
+        self.num_label1.configure(text = f'{round(value, 2)}')
+
+    def update_text2(self, value):
+        # print(value)
+        self.num_label2.configure(text = f'{round(value, 2)}')
 
     # Function to round the slider value to the nearest odd number
     def round_to_odd(self, value):
