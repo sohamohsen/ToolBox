@@ -44,7 +44,8 @@ class App(ctk.CTk):
             'translation_sw': ctk.BooleanVar(value=TRANSLATION_SW_DEFAULT),
             'translation': ctk.IntVar(value=TRANSLATION_DEFAULT),
             'deskewing_sw': ctk.BooleanVar(value=DESKEWING_SW_DEFAULT),
-            'deskewing': ctk.DoubleVar(value=DESKEWING_DEFAULT),
+            'deskewing_X': ctk.DoubleVar(value=DESKEWING_DEFAULT),
+            'deskewing_Y': ctk.DoubleVar(value=DESKEWING_DEFAULT),
             'flip': ctk.StringVar(value=FLIP_OPTIONS[0])
         }
         self.color_var = {
@@ -58,6 +59,7 @@ class App(ctk.CTk):
         self.effect_var = {
             'blur': ctk.DoubleVar(value=BLUR_DEFAULT),
             'blur_averaging': ctk.IntVar(value=BLUR_DEFAULT),
+            'blur_median': ctk.IntVar(value=BLUR_DEFAULT),
             'contrast': ctk.IntVar(value=CONTRAST_DEFAULT),  # New contrast parameter
             'Thresholding_sw': ctk.BooleanVar(value=THRESHOLDING_SW_DEFAULT),
             'Thresholding': ctk.DoubleVar(value=THRESHOLDING_DEFAULT),
@@ -101,6 +103,17 @@ class App(ctk.CTk):
             self.image = cv2.warpAffine(self.image, translation_matrix, (width, height))
             ttx = tx
 
+        # Skewing
+            # skew_factor_x = 0.5  # Adjust the skew factor for X-axis (positive values tilt right, negative values tilt left)
+            # skew_factor_y = 0.2  # Adjust the skew factor for Y-axis (positive values tilt down, negative values tilt up)
+
+            # Define the skew matrix
+            skew_matrix = np.float32([[1, self.pos_var['deskewing_X'].get(), 0], [self.pos_var['deskewing_Y'].get(), 1, 0]])
+
+            # Apply the skew transformation
+            self.image = cv2.warpAffine(self.image, skew_matrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+
+
         # Flip (using OpenCV)
         flip_mode = self.pos_var['flip'].get()
         if flip_mode == 'X':
@@ -126,7 +139,7 @@ class App(ctk.CTk):
         if self.color_var['invert'].get():
             self.image = cv2.bitwise_not(self.image)
 
-        # GaussianBlur
+        # Histgram equliztion
         contrast_value = float(self.effect_var['contrast'].get())  # Get the blur value
         if contrast_value > 0:
             # Perform histogram equalization based on slider value
@@ -135,16 +148,34 @@ class App(ctk.CTk):
             alpha = self.effect_var['contrast'].get() / 10.0  # Scale the slider value
             self.image = cv2.convertScaleAbs(self.image, alpha=alpha, beta=0)
             
-        # # Create an averaging kernel
-        # kernel_size = float(self.effect_var['blur'].get())  # Get the blur value
-        # kernel_size = int(kernel_size)  # Convert to integer
-        # # Ensure the kernel size is odd
-        # kernel_size = kernel_size if kernel_size % 2 != 0 else kernel_size + 1
-        # kernel = np.ones((kernel_size, kernel_size), np.float32) / (kernel_size * kernel_size)
+        # Blur Gaussian
+        blur_value = float(self.effect_var['blur'].get())  # Get the blur value
+        if blur_value > 0:
+            # Adjust filter size based on image size and blur strength
+            filter_size = int(min(5 * blur_value, 31))  # Ensure the maximum size is 31
+            filter_size = filter_size if filter_size % 2 != 0 else filter_size + 1  # Ensure the size is odd
+            self.image = cv2.GaussianBlur(self.image, (filter_size, filter_size), 0)
+        
 
-        # # Apply the filter using OpenCV filter2D function
-        # self.image = cv2.filter2D(self.image, -1, kernel)
-        # self.image = np.uint8(np.absolute(self.image))
+        # Create an averaging kernel
+        kernel_size = float(self.effect_var['blur_averaging'].get())  # Get the blur value
+        kernel_size = int(kernel_size)  # Convert to integer
+        # Ensure the kernel size is odd
+        kernel_size = kernel_size if kernel_size % 2 != 0 else kernel_size + 1
+        kernel = np.ones((kernel_size, kernel_size), np.float32) / (kernel_size * kernel_size)
+
+        # Apply the filter using OpenCV filter2D function
+        self.image = cv2.filter2D(self.image, -1, kernel)
+        self.image = np.uint8(np.absolute(self.image))
+        
+        if self.effect_var['blur_median'].get() < 3:
+            pass
+        else:
+            median_kernel_size = int(self.effect_var['blur_median'].get())  # Get the blur value
+            median_kernel_size = median_kernel_size if median_kernel_size % 2 != 0 else median_kernel_size + 1
+            self.image = cv2.medianBlur(self.image, median_kernel_size)
+            # self.image = np.uint8(np.absolute(self.image))
+
 
 
 
@@ -185,21 +216,24 @@ class App(ctk.CTk):
 
         # # Check if the "Show Hist" button is pressed
         # if self.color_var['hist'].get():
-        #     # Convert the image to grayscale if it's a color image
-        #     gray_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
-
-        #     # Compute the histogram using OpenCV
-        #     histogram = cv2.calcHist([gray_image], [0], None, [256], [0, 256])
-
-        #     # Plot the histogram using Matplotlib
-        #     plt.figure(figsize=(8, 6))
-        #     plt.plot(histogram, color='black')
-        #     plt.title('Grayscale Histogram')
-        #     plt.xlabel('Pixel value')
-        #     plt.ylabel('Frequency')
-        #     plt.show()
+            
 
         self.place_image()
+
+    def on_hist_click(self):
+        # Convert the image to grayscale if it's a color image
+            gray_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+
+            # Compute the histogram using OpenCV
+            histogram = cv2.calcHist([gray_image], [0], None, [256], [0, 256])
+
+            # Plot the histogram using Matplotlib
+            plt.figure(figsize=(8, 6))
+            plt.plot(histogram, color='black')
+            plt.title('Grayscale Histogram')
+            plt.xlabel('Pixel value')
+            plt.ylabel('Frequency')
+            plt.show()
 
     def create_widgets(self):
         self.image_import = ImageImport(self, self.import_image)

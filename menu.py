@@ -1,5 +1,7 @@
 import customtkinter as ctk
 from panels import *
+import matplotlib.pyplot as plt
+import cv2
 # from main import *
 
 class Menu(ctk.CTkTabview):
@@ -29,8 +31,10 @@ class PositionFrame(ctk.CTkFrame):
         SegmentedPanel(self, 'Invert', pos_var['flip'], FLIP_OPTIONS)
         SwSliderPanel(self, 'Translation', pos_var['translation'], -200, 200, (pos_var['translation_sw'], 'X/Y'))
         SliderPanel(self, 'Rotation', pos_var['rotate'], 0, 360)
-        SliderPanel(self, 'Zoom', pos_var['zoom'], 0, 200)
-        SwSliderPanel(self, 'DeSkewing', pos_var['deskewing'], -90, 90, (pos_var['deskewing_sw'], 'X/Y'))
+        SliderPanel(self, 'Zoom', pos_var['zoom'], -5, 5)
+        # SwSliderPanel(self, 'DeSkewing', pos_var['deskewing'], -90, 90, (pos_var['deskewing_sw'], 'X/Y'))
+        Sliders2Panel(self, 'Skewing', 'X','y', pos_var['deskewing_X'], pos_var['deskewing_Y'], -1, 1, -1, 1)
+
 
 class ColorFrame(ctk.CTkFrame):
     def __init__(self, parent, color_var):
@@ -40,8 +44,8 @@ class ColorFrame(ctk.CTkFrame):
         SwitchPanel(self, (color_var['grayscale'], 'B/W'), (color_var['invert'], 'Invert'))
         SliderPanel(self, 'Brightness', color_var['brightness'], 0, 5)
         SliderPanel(self, 'Vibrance', color_var['vibrance'], 0, 5)
-        # SliderWithButtonPanel(self, 'eq', color_var['eq'], 0, 10, 'Show Hist', color_var['hist'])
-
+        SliderWithButtonPanel(self, 'eq', color_var['eq'], 0, 10, 'Show Hist')
+                            #  (parent, slider_text, rotation, min_value, max_value, button_text
     
 
 
@@ -52,8 +56,8 @@ class EffactFrame(ctk.CTkFrame):
         SegmentedPanel(self, 'Find Edges', effect_var['Find_Edges'], FIND_EDGES_OPTIONS)
         DropDownPanel(self, effect_var['effect'], EFFECT_OPTIONS)
         # SliderPanel(self, 'Blur', effect_var['blur'], 0, 30)
-        SlidersPanel(self, 'low pass filter', 'Averaging','Blur (Gaussian)', effect_var['blur_averaging'], effect_var['blur'], 0, 15, 0, 30)
-        SliderPanel(self, 'Contrast', effect_var['contrast'], 0, 30)
+        SlidersPanel(self, 'Low pass filter', 'Averaging','Blur (Gaussian)', 'Median Blurring (Salt & paper)', effect_var['blur_averaging'], effect_var['blur'], effect_var['blur_median'], 0, 15, 0, 30, 0, 15)
+        SliderPanel(self, 'Histgram EQ', effect_var['contrast'], 0, 30)
         # SwitchPanel(self, (effect_var['Thresholding_sw'], 'on/off'))
         # SliderPanel(self, 'Thresholding', effect_var['Thresholding'], 0, 255)
         SwSliderPanel(self, 'Thresholding', effect_var['Thresholding'], 0, 255, (effect_var['Thresholding_sw'], 'on/off'))
