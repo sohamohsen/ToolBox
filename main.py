@@ -1,12 +1,12 @@
 import cv2
 import numpy as np
 import customtkinter as ctk
-from image_wedges import *
-from PIL import Image, ImageTk, ImageOps, ImageEnhance
-from menu import Menu
+import pytesseract
 import matplotlib.pyplot as plt
 
-
+from image_wedges import *
+from PIL import Image, ImageTk
+from menu import Menu
 
 class App(ctk.CTk):
     def __init__(self):
@@ -53,15 +53,17 @@ class App(ctk.CTk):
             'invert': ctk.BooleanVar(value=INVERT_DEFAULT),
             'eq': ctk.IntVar(value=CONTRAST_DEFAULT),  # New contrast parameter
             'hist': ctk.BooleanVar(value=HIST_BUTTON_DEFAULT),
+            'contrast': ctk.IntVar(value=CONTRAST_DEFAULT),  # New contrast parameter
             'vibrance': ctk.DoubleVar(value=VIBRANCE_DEFAULT)
         }
         self.effect_var = {
             'blur': ctk.DoubleVar(value=BLUR_DEFAULT),
             'blur_averaging': ctk.IntVar(value=BLUR_DEFAULT),
             'blur_median': ctk.IntVar(value=BLUR_DEFAULT),
-            'contrast': ctk.IntVar(value=CONTRAST_DEFAULT),  # New contrast parameter
             'Thresholding_sw': ctk.BooleanVar(value=THRESHOLDING_SW_DEFAULT),
             'Thresholding': ctk.DoubleVar(value=THRESHOLDING_DEFAULT),
+            'Freq_domain_enhance': ctk.DoubleVar(value=FREQ_DOMAIN_ENHANCE_DEFALT),
+            'Freq_domain_enhance_sw': ctk.BooleanVar(value=THRESHOLDING_SW_DEFAULT),
             'effect': ctk.StringVar(value=EFFECT_OPTIONS[0]),
             'Find_Edges': ctk.StringVar(value=FIND_EDGES_OPTIONS[0])
         }
@@ -78,7 +80,23 @@ class App(ctk.CTk):
         for var in combined_vars:
             var.trace('w', self.manipulate_image)
 
+    def emboss_filter(image):
+        # Convert the image to grayscale
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Apply the emboss kernel
+        emboss_kernel = np.array([[0, -1, -1],
+                                [1,  0, -1],
+                                [1,  1,  0]])
+        embossed_image = cv2.filter2D(gray, -1, emboss_kernel)
+
+        # Convert back to BGR for display purposes
+        embossed_image = cv2.cvtColor(embossed_image, cv2.COLOR_GRAY2BGR)
+
+        return embossed_image
+
     def manipulate_image(self, *args):
+                
         self.image = self.original.copy()
         
         global tty, ttx
@@ -147,12 +165,12 @@ class App(ctk.CTk):
             self.image = cv2.bitwise_not(self.image)
 
         # Histgram equliztion
-        contrast_value = float(self.effect_var['contrast'].get())  # Get the blur value
+        contrast_value = float(self.color_var['contrast'].get())  # Get the blur value
         if contrast_value > 0:
             # Perform histogram equalization based on slider value
             self.image = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
             self.image = cv2.equalizeHist(self.image)
-            alpha = self.effect_var['contrast'].get() / 10.0  # Scale the slider value
+            alpha = self.color_var['contrast'].get() / 10.0  # Scale the slider value
             self.image = cv2.convertScaleAbs(self.image, alpha=alpha, beta=0)
             
         # Blur Gaussian
@@ -162,7 +180,39 @@ class App(ctk.CTk):
             filter_size = int(min(5 * blur_value, 31))  # Ensure the maximum size is 31
             filter_size = filter_size if filter_size % 2 != 0 else filter_size + 1  # Ensure the size is odd
             self.image = cv2.GaussianBlur(self.image, (filter_size, filter_size), 0)
-        
+
+        # Filters
+        match self.effect_var['effect'].get():
+            case 'Emboss': 
+                self.image = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+                emboss_kernel = np.array([[0, -1, -1],
+                                          [1,  0, -1],
+                                          [1,  1,  0]])
+                self.image = cv2.filter2D(self.image, -1, emboss_kernel)
+                self.image = cv2.cvtColor(self.image, cv2.COLOR_GRAY2BGR)
+            
+            case 'Histgoram': 
+                # Check if the image is grayscale or colored
+                if len(self.image.shape) < 3 or self.image.shape[2] == 1:
+                    # Grayscale image
+                    hist = cv2.calcHist([self.image], [0], None, [256], [0, 256])
+                    plt.plot(hist, color='black')
+                    plt.title('Grayscale Histogram')
+                    plt.xlabel('Pixel value')
+                    plt.ylabel('Frequency')
+                    plt.show()
+                else:
+                    # Colored image
+                    colors = ('b', 'g', 'r')
+                    for i, col in enumerate(colors):
+                        hist = cv2.calcHist([self.image], [i], None, [256], [0, 256])
+                        plt.plot(hist, color=col)
+                        plt.xlim([0, 256])
+
+                    plt.title('Color Histogram')
+                    plt.xlabel('Pixel value')
+                    plt.ylabel('Frequency')
+                    plt.show()
 
         # Create an averaging kernel
         kernel_size = float(self.effect_var['blur_averaging'].get())  # Get the blur value
@@ -183,12 +233,9 @@ class App(ctk.CTk):
             self.image = cv2.medianBlur(self.image, median_kernel_size)
             # self.image = np.uint8(np.absolute(self.image))
 
-
-
-
-        # Contrast adjustment (OpenCV equivalent)
-        contrast_value = self.effect_var['contrast'].get()
-        self.image = cv2.addWeighted(self.image, 1 + contrast_value * 0.01, self.image, -contrast_value * 0.01, 0)
+        # # Contrast adjustment (OpenCV equivalent)
+        # contrast_value = self.color_var['contrast'].get()
+        # self.image = cv2.addWeighted(self.image, 1 + contrast_value * 0.01, self.image, -contrast_value * 0.01, 0)
 
         # Edge detecting
         detect_option = self.effect_var['Find_Edges'].get()
@@ -242,20 +289,21 @@ class App(ctk.CTk):
             transformed_image *= 255  # Scale the image values to 0-255 for display
             self.image = np.uint8(transformed_image)
 
+        # # Fraquance domain enhancement
+        # if self.effect_var['Freq_domain_enhance_sw'].get():
+        #     pass
         if self.color_var['grayscale'].get():
             lower_threshold = self.point_var['lower_threshold'].get()
             upper_threshold = self.point_var['higher_threshold'].get()
             mask = cv2.inRange(self.image, lower_threshold, upper_threshold)
             self.image = cv2.bitwise_and(self.image, self.image, mask=mask) 
         else: 
-            pass           
-        
-        
-        # # Check if the "Show Hist" button is pressed
-        # if self.color_var['hist'].get():
-            
+            pass            
 
         self.place_image()
+
+    def reset_default(self):
+        pass
 
     def on_hist_click(self):
         # Convert the image to grayscale if it's a color image
@@ -287,7 +335,7 @@ class App(ctk.CTk):
         # Display the image and close button
         self.image_output = ImageOutput(self, self.resize_image)
         self.close_button = CloseOutput(self, self.close_edit)
-        self.menu = Menu(self, self.pos_var, self.color_var, self.effect_var, self.point_var)
+        self.menu = Menu(self, self.pos_var, self.color_var, self.effect_var, self.point_var, self.export_image, self.ocr_image)
 
         self.image_output.grid(row=0, column=1, sticky='nsew')
         self.close_button.place(x=0, y=0)  # Adjust the position of the close button
@@ -297,6 +345,8 @@ class App(ctk.CTk):
         self.image_output.grid_forget()
         self.close_button.place_forget()
         self.menu.grid_forget()
+        self.init_parameters()
+
 
         # recreate the import button at its previous position
         self.create_widgets()
@@ -328,6 +378,132 @@ class App(ctk.CTk):
         self.image_output.delete('all')
         self.image_output.create_image(self.canvas_width / 2, self.canvas_height / 2, image=self.image_tk)
 
-    
+    def export_image(self, name, file, path):
+        export_string = f'{path}/{name}.{file}'
+        print(export_string)
+        cv2.imwrite(export_string, self.image)
+
+    def ocr_image(self, name, file, path):
+        export_string = f'{path}/{name}.{file}'
+
+        # Read image from which text needs to be extracted
+        gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+
+        # Performing OTSU threshold
+        ret, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+
+        # Specify structure shape and kernel size. 
+        # Kernel size increases or decreases the area 
+        # of the rectangle to be detected.
+        # A smaller value like (10, 10) will detect 
+        # each word instead of a sentence.
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
+
+        # Applying dilation on the threshold image
+        dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+
+        # Finding contours
+        contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, 
+                                                        cv2.CHAIN_APPROX_NONE)
+
+        # Creating a copy of image
+        im2 = self.image.copy()
+
+        # A text file is created and flushed
+        file = open("recognized.txt", "w+")
+        file.write("")
+        file.close()
+
+        # Looping through the identified contours
+        # Then rectangular part is cropped and passed on
+        # to pytesseract for extracting text from it
+        # Extracted text is then written into the text file
+        for cnt in contours:
+            x, y, w, h = cv2.boundingRect(cnt)
+            
+            # Drawing a rectangle on copied image
+            rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            
+            # Cropping the text block for giving input to OCR
+            cropped = im2[y:y + h, x:x + w]
+            
+            # Open the file in append mode
+            file = open("recognized.txt", "a")
+            
+            # Apply OCR on the cropped image
+            text = pytesseract.image_to_string(cropped)
+            
+            # Appending the text into file
+            file.write(text)
+            file.write("\n")
+            
+            # Close the file
+            file.close
+        print(export_string)
+    def export_image(self, name, file, path):
+        export_string = f'{path}/{name}.{file}'
+        print(export_string)
+        cv2.imwrite(export_string, self.image)
+
+    def ocr_image(self, name, file, path):
+        export_string = f'{path}/{name}.{file}'
+
+        # Read image from which text needs to be extracted
+        gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+
+        # Performing OTSU threshold
+        ret, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+
+        # Specify structure shape and kernel size. 
+        # Kernel size increases or decreases the area 
+        # of the rectangle to be detected.
+        # A smaller value like (10, 10) will detect 
+        # each word instead of a sentence.
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
+
+        # Applying dilation on the threshold image
+        dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+
+        # Finding contours
+        contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, 
+                                                        cv2.CHAIN_APPROX_NONE)
+
+        # Creating a copy of image
+        im2 = self.image.copy()
+
+        # A text file is created and flushed
+        file = open("recognized.txt", "w+")
+        file.write("")
+        file.close()
+
+        # Looping through the identified contours
+        # Then rectangular part is cropped and passed on
+        # to pytesseract for extracting text from it
+        # Extracted text is then written into the text file
+        for cnt in contours:
+            x, y, w, h = cv2.boundingRect(cnt)
+            
+            # Drawing a rectangle on copied image
+            rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            
+            # Cropping the text block for giving input to OCR
+            cropped = im2[y:y + h, x:x + w]
+            
+            # Open the file in append mode
+            file = open("recognized.txt", "a")
+            
+            # Apply OCR on the cropped image
+            text = pytesseract.image_to_string(cropped)
+            
+            # Appending the text into file
+            file.write(text)
+            file.write("\n")
+            
+            # Close the file
+            file.close
+        print(export_string)
+
+
+
 
 App()

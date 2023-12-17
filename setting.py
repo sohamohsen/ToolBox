@@ -3,7 +3,7 @@ ZOOM_DEFAULT = 0
 FLIP_OPTIONS = ['None', 'X', 'Y', 'Both']
 BLUR_DEFAULT = 0
 CONTRAST_DEFAULT = 0
-EFFECT_OPTIONS = ['None', 'Emboss', 'Counter', 'Edge enhance']
+EFFECT_OPTIONS = ['None', 'Emboss', 'Histgoram']
 FIND_EDGES_OPTIONS = ['None', 'Laplacian', 'Sobel_X', 'Sobel_Y', 'Sobel']
 BRIGHTNESS_DEFAULT = 0.5
 VIBRANCE_DEFAULT = 1
@@ -22,6 +22,7 @@ LOG_VALUE_DEFAULT = False
 PLATE_NUM_DEFAULT = 0
 LOWER_THRESHOLD_DEFAULT = 50
 HIGHER_THRESHOLD_DEFAULT = 200
+FREQ_DOMAIN_ENHANCE_DEFALT = 50
 tty = 0
 ttx =0
 
