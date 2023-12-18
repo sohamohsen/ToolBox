@@ -3,7 +3,10 @@ import numpy as np
 import customtkinter as ctk
 import pytesseract
 import matplotlib.pyplot as plt
+import ipywidgets as widgets
 
+from IPython.display import display
+from ipywidgets import interact
 from image_wedges import *
 from PIL import Image, ImageTk
 from menu import Menu
@@ -110,12 +113,25 @@ class App(ctk.CTk):
         self.image = cv2.warpAffine(self.image, rotation_matrix, (width, height))
 
         zoom_factor = self.pos_var['zoom'].get()
-        if abs(zoom_factor - 1) > 0.01:
-            resized_width = int(self.image.shape[1] * zoom_factor)
-            resized_height = int(self.image.shape[0] * zoom_factor)
-            if resized_width > 0 and resized_height > 0:  # Ensure valid resizing dimensions
-                self.image = cv2.resize(self.image, (resized_width, resized_height), interpolation=cv2.INTER_AREA)
+        height, width = self.image.shape[:2]
+        new_width = int(width * zoom_factor)
+        new_height = int(height * zoom_factor)
 
+        center_x, center_y = width // 2, height // 2
+
+        x1 = max(0, center_x - new_width // 2)
+        x2 = min(width, center_x + new_width // 2)
+        y1 = max(0, center_y - new_height // 2)
+        y2 = min(height, center_y + new_height // 2)
+
+        cropped_image = self.image[y1:y2, x1:x2]
+
+        # Check if cropped image dimensions are valid
+        if cropped_image.shape[0] <= 0 or cropped_image.shape[1] <= 0:
+            return None  # Return None if invalid dimensions
+
+        self.image = cv2.resize(cropped_image, (width, height), interpolation=cv2.INTER_LINEAR)
+        
         # Translation operation
         if self.pos_var['translation_sw'].get():
             ty = self.pos_var['translation'].get()
@@ -289,9 +305,33 @@ class App(ctk.CTk):
             transformed_image *= 255  # Scale the image values to 0-255 for display
             self.image = np.uint8(transformed_image)
 
-        # # Fraquance domain enhancement
         # if self.effect_var['Freq_domain_enhance_sw'].get():
-        #     pass
+        #     enhancement_level = self.effect_var['Freq_domain_enhance'].get()  # Retrieve the enhancement level value
+
+        #     gray_img = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+        #     dft = cv2.dft(np.float32(gray_img), flags=cv2.DFT_COMPLEX_OUTPUT)
+        #     dft_shift = np.fft.fftshift(dft)
+
+        #     magnitude_spectrum = 20 * np.log(cv2.magnitude(dft_shift[:, :, 0], dft_shift[:, :, 1]))
+        #     enhanced_spectrum = magnitude_spectrum * enhancement_level
+
+        #     # Reshape enhanced_spectrum to match the shape of dft_shift
+        #     enhanced_spectrum_expanded = np.expand_dims(enhanced_spectrum, axis=2)  # Expand dimensions
+
+        #     # Perform element-wise multiplication after broadcasting
+        #     enhanced_dft_real = dft_shift[:, :, 0] * (np.exp(enhanced_spectrum_expanded / 20))
+        #     enhanced_dft_imag = dft_shift[:, :, 1] * (np.exp(enhanced_spectrum_expanded / 20))
+
+        #     # Combine real and imaginary parts into a complex array
+        #     enhanced_dft = cv2.merge([enhanced_dft_real, enhanced_dft_imag])
+
+        #     # Inverse transformation
+        #     inverse_dft = np.fft.ifftshift(enhanced_dft)
+        #     img_back = cv2.idft(inverse_dft)
+        #     img_back = cv2.magnitude(img_back[:, :, 0], img_back[:, :, 1])
+
+        #     self.image = cv2.normalize(img_back, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
         if self.color_var['grayscale'].get():
             lower_threshold = self.point_var['lower_threshold'].get()
             upper_threshold = self.point_var['higher_threshold'].get()

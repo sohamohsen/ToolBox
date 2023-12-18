@@ -33,7 +33,7 @@ class PositionFrame(ctk.CTkFrame):
         SegmentedPanel(self, 'Invert', pos_var['flip'], FLIP_OPTIONS)
         SwSliderPanel(self, 'Translation', pos_var['translation'], -200, 200, (pos_var['translation_sw'], 'X/Y'))
         SliderPanel(self, 'Rotation', pos_var['rotate'], 0, 360)
-        SliderPanel(self, 'Zoom', pos_var['zoom'], -5, 5)
+        SliderPanel(self, 'Zoom', pos_var['zoom'], 0, 1)
         # SwSliderPanel(self, 'DeSkewing', pos_var['deskewing'], -90, 90, (pos_var['deskewing_sw'], 'X/Y'))
         Sliders2Panel(self, 'Skewing', 'X','y', pos_var['deskewing_X'], pos_var['deskewing_Y'], -1, 1, -1, 1)
         RevertButton(self, 
@@ -73,7 +73,7 @@ class EffactFrame(ctk.CTkFrame):
         # SliderPanel(self, 'Blur', effect_var['blur'], 0, 30)
         # SwitchPanel(self, (effect_var['Thresholding_sw'], 'on/off'))
         # SliderPanel(self, 'Thresholding', effect_var['Thresholding'], 0, 255)
-        # SwSliderPanel(self, 'Frequency domain enhancement', effect_var['Freq_domain_enhance'], 0, 100, (effect_var['Freq_domain_enhance_sw'], 'on/off'))
+        # SwSliderPanel(self, 'Frequency domain enhancement', effect_var['Freq_domain_enhance'], -100, 100, (effect_var['Freq_domain_enhance_sw'], 'on/off'))
         SwSliderPanel(self, 'Thresholding', effect_var['Thresholding'], 0, 255, (effect_var['Thresholding_sw'], 'on/off'))
         RevertButton(self, 
                     (effect_var['Find_Edges'], FIND_EDGES_OPTIONS[0]),
